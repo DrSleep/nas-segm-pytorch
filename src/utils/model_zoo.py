@@ -1,7 +1,6 @@
 # Adapted from torch.utils.model_zoo
 
 from __future__ import absolute_import, division, print_function, unicode_literals
-import torch
 
 import hashlib
 import os
@@ -9,7 +8,6 @@ import re
 import shutil
 import sys
 import tempfile
-
 try:
     from requests.utils import urlparse
     from requests import get as urlopen
@@ -22,10 +20,13 @@ except ImportError:
     else:
         from urllib.request import urlopen
         from urllib.parse import urlparse
+
+import torch
 try:
     from tqdm import tqdm
 except ImportError:
     tqdm = None  # defined below
+
 
 # matches bfd8deac from resnet18-bfd8deac.pth
 HASH_REGEX = re.compile(r'-([a-f0-9]*)\.')
@@ -50,9 +51,6 @@ def load_url(nameurl, model_dir=None, map_location=None, progress=True):
         map_location (optional): a function or a dict specifying how to remap storage locations (see torch.load)
         progress (bool, optional): whether or not to display a progress bar to stderr
 
-    Example:
-        >>> state_dict = torch.utils.model_zoo.load_url('https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth')
-
     """
     name, url = nameurl
     if model_dir is None:
@@ -60,7 +58,6 @@ def load_url(nameurl, model_dir=None, map_location=None, progress=True):
         model_dir = os.getenv('TORCH_MODEL_ZOO', os.path.join(torch_home, 'models'))
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
-    parts = urlparse(url)
     filename = name
     cached_file = os.path.join(model_dir, filename)
     if not os.path.exists(cached_file):

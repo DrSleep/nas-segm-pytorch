@@ -121,6 +121,8 @@ Session.vim
 # Temporary
 .netrwhist
 *~
+*.vscode
+
 # Auto-generated tag files
 tags
 

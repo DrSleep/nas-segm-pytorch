@@ -1,15 +1,16 @@
 """NAS Decoders"""
 
-import operator
-import six
+
+import logging
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .layer_factory import conv_bn_relu, conv3x3, OPS
-from rl.genotypes import OP_NAMES
 
-import logging
+from rl.genotypes import OP_NAMES
+from .layer_factory import conv_bn_relu, conv3x3, OPS
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class AggregateCell(nn.Module):
             x1 = nn.Upsample(size=x2.size()[2:], mode='bilinear')(x1)
         return x1 + x2
 
+
 class ContextualCell(nn.Module):
     """New contextual cell design
 
@@ -59,27 +61,33 @@ class ContextualCell(nn.Module):
                 op_id = op
                 self._collect_inds.remove(pos)
                 op_name = OP_NAMES[op_id]
-                self._ops.append(OPS[op_name](inp, 1, True, repeats)) # turn-off scaling in batch norm
+                 # turn-off scaling in batch norm
+                self._ops.append(
+                    OPS[op_name](inp, 1, True, repeats))
                 self._pos.append(pos)
                 self._collect_inds.append(ind+1)
                 self._pools.append('{}({})'.format(op_name, self._pools[pos]))
             else:
                 pos1, pos2, op_id1, op_id2 = op
                 # drop op_id from loose ends
-                for ind2, (pos, op_id) in enumerate(zip([pos1, pos2], [op_id1, op_id2])):
+                for (pos, op_id) in zip([pos1, pos2], [op_id1, op_id2]):
                     if pos in self._collect_inds:
                         self._collect_inds.remove(pos)
                     op_name = OP_NAMES[op_id]
-                    self._ops.append(OPS[op_name](inp, 1, True, repeats)) # turn-off scaling in batch norm
+                     # turn-off scaling in batch norm
+                    self._ops.append(OPS[op_name](inp, 1, True, repeats))
                     self._pos.append(pos)
-                    #self._collect_inds.append(ind * 3 + ind2 - 1) # Do not collect intermediate
+                    # Do not collect intermediate layers
                     self._pools.append('{}({})'.format(op_name, self._pools[pos]))
                 # summation
                 op_name = 'sum'
-                self._ops.append(AggregateCell(size_1=None, size_2=None, agg_size=inp, pre_transform=False)) # turn-off convbnrelu
+                # turn-off convbnrelu
+                self._ops.append(
+                    AggregateCell(size_1=None, size_2=None, agg_size=inp, pre_transform=False))
                 self._pos.append([ind * 3 - 1, ind * 3])
                 self._collect_inds.append(ind * 3 + 1)
-                self._pools.append('{}({},{})'.format(op_name, self._pools[ind * 3 - 1], self._pools[ind * 3]))
+                self._pools.append(
+                    '{}({},{})'.format(op_name, self._pools[ind * 3 - 1], self._pools[ind * 3]))
 
     def forward(self, x):
         feats = [x]
@@ -96,6 +104,7 @@ class ContextualCell(nn.Module):
 
     def prettify(self):
         return ' + '.join(self._pools[i] for i in self._collect_inds)
+
 
 class MergeCell(nn.Module):
     def __init__(self, ctx_config, conn, inps, agg_size, ctx_cell, repeats=1):
@@ -174,8 +183,10 @@ class MicroDecoder(nn.Module):
                                    ctx_cell, repeats=repeats))
             aux_clfs.append(nn.Sequential())
             if self.aux_cell:
-                aux_clfs[block_idx].add_module('aux_cell', ctx_cell(self.ctx, agg_size, repeats=repeats))
-            aux_clfs[block_idx].add_module('aux_clf', conv3x3(agg_size, num_classes, stride=1, bias=True))
+                aux_clfs[block_idx].add_module(
+                    'aux_cell', ctx_cell(self.ctx, agg_size, repeats=repeats))
+            aux_clfs[block_idx].add_module(
+                'aux_clf', conv3x3(agg_size, num_classes, stride=1, bias=True))
             self.collect_inds.append(block_idx + num_pools)
             inp_sizes.append(agg_size)
             ## for description
@@ -213,9 +224,11 @@ class MicroDecoder(nn.Module):
             collect = x[self.collect_inds[i]]
             if out.size()[2] > collect.size()[2]:
                 # upsample collect
-                collect = nn.Upsample(size=out.size()[2:], mode='bilinear', align_corners=False)(collect)
+                collect = nn.Upsample(
+                    size=out.size()[2:], mode='bilinear', align_corners=False)(collect)
             elif collect.size()[2] > out.size()[2]:
-                out = nn.Upsample(size=collect.size()[2:], mode='bilinear', align_corners=False)(out)
+                out = nn.Upsample(
+                    size=collect.size()[2:], mode='bilinear', align_corners=False)(out)
             out = torch.cat([out, collect], 1)
 
         out = F.relu(out)
