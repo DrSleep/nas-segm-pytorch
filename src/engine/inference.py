@@ -62,6 +62,7 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
                             ))
     ious, n_pixels, accs = compute_ius_accs(cm)
     logger.info(" IoUs: {}, accs: {}".format(ious, accs))
+    # IoU by default is 1, so we ignore all the unchanged classes
     # +1 - since we ignore background
     present_ind = np.array(
         [idx + 1 for idx, iu in enumerate(ious[1:]) if iu != 1.])
