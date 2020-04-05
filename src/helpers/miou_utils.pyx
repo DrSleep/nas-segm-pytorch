@@ -7,17 +7,17 @@ import numpy as np
 def fast_cm(unsigned char[::1] preds, unsigned char[::1] gt,
             int n_classes):
     """Computing confusion matrix faster.
-    
+
     Args:
       preds (Tensor) : predictions (either flatten or of size (len(gt), top-N)).
       gt (Tensor) : flatten gt.
       n_classes (int) : number of classes.
-    
+
     Returns:
 
-      Confusion matrix 
+      Confusion matrix
       (Tensor of size (n_classes, n_classes)).
-    
+
     """
     cdef np.ndarray[np.int_t, ndim=2] cm = np.zeros((n_classes, n_classes),
                                                     dtype=np.int_)
@@ -31,13 +31,13 @@ def fast_cm(unsigned char[::1] preds, unsigned char[::1] gt,
 
 def compute_iu(np.ndarray[np.int_t, ndim=2] cm):
     """Compute IU from confusion matrix.
-    
+
     Args:
       cm (Tensor) : square confusion matrix.
-      
+
     Returns:
       IU vector (Tensor).
-    
+
     """
     cdef unsigned int pi = 0
     cdef unsigned int gi = 0
@@ -58,13 +58,13 @@ def compute_iu(np.ndarray[np.int_t, ndim=2] cm):
 def compute_ius_accs(np.ndarray[np.int_t, ndim=2] cm):
     """Compute IU/acc from confusion matrix.
     From: https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
-    
+
     Args:
       cm (Tensor) : square confusion matrix.
-      
+
     Returns:
       IU vector (Tensor).
-    
+
     """
     cdef unsigned int pi = 0 # n_{ji} - predicted to be of class i
     cdef unsigned int gi = 0 # t_{i} - gt of class i

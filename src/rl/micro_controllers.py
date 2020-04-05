@@ -18,9 +18,16 @@ class MicroController(nn.Module):
     With modification that indices and ops chosen with linear classifier
     Samples output strides for encoder and decoder structure
     """
-    def __init__(self, num_enc_scales, op_size,
-                 hidden_size=100, num_lstm_layers=2, num_dec_layers=3,
-                 num_ctx_layers=4):
+
+    def __init__(
+        self,
+        num_enc_scales,
+        op_size,
+        hidden_size=100,
+        num_lstm_layers=2,
+        num_dec_layers=3,
+        num_ctx_layers=4,
+    ):
         """
         Args:
           num_enc_scales (int): encoder input scales
@@ -42,12 +49,13 @@ class MicroController(nn.Module):
         self.tanh_constant = None
 
         # the network
-        self.rnn = nn.LSTM(hidden_size, hidden_size,
-                           num_lstm_layers)
+        self.rnn = nn.LSTM(hidden_size, hidden_size, num_lstm_layers)
         self.enc_op = nn.Embedding(op_size, hidden_size)
         self.linear_op = nn.Linear(hidden_size, op_size)
         self.g_emb = nn.Parameter(torch.zeros(1, 1, hidden_size))
-        self._action_len = 2 * num_dec_layers + 4 * (num_ctx_layers - 1) + 2 # 2 for first 2 in ctx
+        self._action_len = (
+            2 * num_dec_layers + 4 * (num_ctx_layers - 1) + 2
+        )  # 2 for first 2 in ctx
 
         # connection predictions
         conn_fcs = []
@@ -60,7 +68,9 @@ class MicroController(nn.Module):
         ctx_fcs = []
         for l in range(2, num_ctx_layers + 1):
             for _ in range(2):
-                ctx_fcs.append(nn.Linear(hidden_size, l * 3 - 4)) # for 2 = 2, 3 = 5, 4 = 8, etc.
+                ctx_fcs.append(
+                    nn.Linear(hidden_size, l * 3 - 4)
+                )  # for 2 = 2, 3 = 5, 4 = 8, etc.
         self.ctx_fcs = nn.ModuleList(ctx_fcs)
 
         # init parameters
@@ -82,7 +92,8 @@ class MicroController(nn.Module):
     def evaluate(self, action):
         """Evaluate entropy entropy and log probability of given architecture."""
         config = MicroController.action2config(
-            action, dec_block=self.num_dec_layers, ctx_block=self.num_ctx_layers)
+            action, dec_block=self.num_dec_layers, ctx_block=self.num_ctx_layers
+        )
         return self.forward(config)
 
     def forward(self, config=None):
@@ -107,8 +118,10 @@ class MicroController(nn.Module):
         inputs = self.g_emb
 
         pool_hiddens = []
-        hidden = (torch.zeros([self.num_lstm_layers, 1, self.hidden_size]),
-                  torch.zeros([self.num_lstm_layers, 1, self.hidden_size]))
+        hidden = (
+            torch.zeros([self.num_lstm_layers, 1, self.hidden_size]),
+            torch.zeros([self.num_lstm_layers, 1, self.hidden_size]),
+        )
         entropy = 0
         log_prob = 0
 
@@ -147,7 +160,7 @@ class MicroController(nn.Module):
             for i in range(2):
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.conn_fcs[layer * 2 + i](output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     index, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     conn.append(int(index))
@@ -164,11 +177,11 @@ class MicroController(nn.Module):
         for layer in range(self.num_ctx_layers):
             # sample position
             if layer == 0:
-                pos = 0 # first position is always 0
+                pos = 0  # first position is always 0
                 # sample operation
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.linear_op(output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                 else:
@@ -186,7 +199,7 @@ class MicroController(nn.Module):
                 for i in range(2):
                     output, hidden = self.rnn(inputs, hidden)
                     logits = self.ctx_fcs[2 * layer - 2 + i](output.squeeze(0))
-                    critic_logits = (compute_critic_logits(logits))
+                    critic_logits = compute_critic_logits(logits)
                     if do_sample:
                         pos, curr_ent, curr_log_prob = sample_logits(critic_logits)
                         cfg.append(int(pos))
@@ -200,7 +213,7 @@ class MicroController(nn.Module):
                 for i in range(2):
                     output, hidden = self.rnn(inputs, hidden)
                     logits = self.linear_op(output.squeeze(0))
-                    critic_logits = (compute_critic_logits(logits))
+                    critic_logits = compute_critic_logits(logits)
                     if do_sample:
                         op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                         cfg.append(int(op_id))
@@ -225,8 +238,10 @@ class MicroController(nn.Module):
 
     @staticmethod
     def get_mock():
-        arc_seq = [[[0], [1, 2, 3, 4], [1, 2, 3, 4,], [1, 2, 3, 4]],
-                   [[0, 1], [2, 3], [4, 5]]]
+        arc_seq = [
+            [[0], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]],
+            [[0, 1], [2, 3], [4, 5]],
+        ]
         entropy = 6
         log_prob = -1.4
         return arc_seq, entropy, log_prob
@@ -256,12 +271,22 @@ class MicroController(nn.Module):
         ctx = []
         for i in range(ctx_block):
             if i == 0:
-                ctx.append([action[i], action[i+1]])
+                ctx.append([action[i], action[i + 1]])
             else:
-                ctx.append([action[(i - 1) * 4 + 2], action[(i - 1) * 4 + 3],
-                            action[(i - 1) * 4 + 4], action[(i - 1) * 4 + 5]])
+                ctx.append(
+                    [
+                        action[(i - 1) * 4 + 2],
+                        action[(i - 1) * 4 + 3],
+                        action[(i - 1) * 4 + 4],
+                        action[(i - 1) * 4 + 5],
+                    ]
+                )
         conns = []
         for i in range(dec_block):
-            conns.append([action[4*(ctx_block-1) + 2 + i*2],
-                          action[4*(ctx_block-1) + 2 + i*2 + 1]])
+            conns.append(
+                [
+                    action[4 * (ctx_block - 1) + 2 + i * 2],
+                    action[4 * (ctx_block - 1) + 2 + i * 2 + 1],
+                ]
+            )
         return [ctx, conns]

@@ -29,56 +29,65 @@ def populate_task0(segmenter, train_loader, kd_net, n_train, do_kd=False):
     segmenter.eval()
     # Populate Xy_train with encoder's outputs
     try:
-        train_loader.dataset.set_stage('train')
+        train_loader.dataset.set_stage("train")
     except AttributeError:
-        train_loader.dataset.dataset.set_stage('train')
+        train_loader.dataset.dataset.set_stage("train")
     train_loader.batch_sampler.batch_size = 1  # to not run out of memory
     with torch.no_grad():
         n_curr = 0
         for sample in train_loader:
-            image = sample['image'].cuda()
-            target = sample['mask'].float()
+            image = sample["image"].cuda()
+            target = sample["mask"].float()
             input_var = torch.autograd.Variable(image).float()
             l1, l2, l3, l4 = segmenter.module.encoder(input_var)
-            Xy_train['l1'].append(l1)
-            Xy_train['l2'].append(l2)
-            Xy_train['l3'].append(l3)
-            Xy_train['l4'].append(l4)
-            Xy_train['y'].append(nn.functional.interpolate(
-                target[:, None], size=l1.size()[2:], mode='nearest').long()[:, 0].cuda())
+            Xy_train["l1"].append(l1)
+            Xy_train["l2"].append(l2)
+            Xy_train["l3"].append(l3)
+            Xy_train["l4"].append(l4)
+            Xy_train["y"].append(
+                nn.functional.interpolate(
+                    target[:, None], size=l1.size()[2:], mode="nearest"
+                )
+                .long()[:, 0]
+                .cuda()
+            )
             if do_kd:
                 kd_y = kd_net(input_var)
-                Xy_train['kd_y'].append(nn.functional.interpolate(
-                    kd_y, size=l1.size()[2:], mode='bilinear',
-                    align_corners=False))
+                Xy_train["kd_y"].append(
+                    nn.functional.interpolate(
+                        kd_y, size=l1.size()[2:], mode="bilinear", align_corners=False
+                    )
+                )
             n_curr += l1.size(0)
             if n_curr >= n_train:
-                Xy_train['out_size'] = l1.size()[2:]
+                Xy_train["out_size"] = l1.size()[2:]
                 logger.info(" Populated Xy_train, N = {}".format(n_curr))
                 break
         # concat into a single tensor
         for k, v in Xy_train.items():
-            if k != 'out_size':
+            if k != "out_size":
                 Xy_train[k] = torch.cat(v, 0)
     return Xy_train
 
+
 @try_except
 def train_task0(
-        Xy_train,
-        segmenter,
-        optim_dec,
-        epoch,
-        segm_crit,
-        kd_crit,
-        batch_size,
-        freeze_bn,
-        do_kd,
-        kd_coeff,
-        dec_grad_clip,
-        do_polyak,
-        avg_param=None,
-        polyak_decay=0.9,
-        aux_weight=0):
+    Xy_train,
+    segmenter,
+    optim_dec,
+    epoch,
+    segm_crit,
+    kd_crit,
+    batch_size,
+    freeze_bn,
+    do_kd,
+    kd_coeff,
+    dec_grad_clip,
+    do_polyak,
+    avg_param=None,
+    polyak_decay=0.9,
+    aux_weight=0,
+):
     """Training task0 segmenter - only decoder
 
     Args:
@@ -100,9 +109,9 @@ def train_task0(
 
     """
     # Train
-    n_examples = Xy_train['l1'].size(0)
+    n_examples = Xy_train["l1"].size(0)
     batch_size = min(batch_size, n_examples)
-    n_passes = (n_examples // batch_size)
+    n_passes = n_examples // batch_size
     indices = np.arange(n_examples)
     batch_time = AverageMeter()
     losses = AverageMeter()
@@ -115,68 +124,70 @@ def train_task0(
     np.random.shuffle(indices)
     for i in range(n_passes):
         start = time.time()
-        train_idx = indices[(i * batch_size): (i + 1) * batch_size]
-        output, aux_outs = segmenter.module.decoder([Xy_train['l1'][train_idx],
-                                                     Xy_train['l2'][train_idx],
-                                                     Xy_train['l3'][train_idx],
-                                                     Xy_train['l4'][train_idx]])
+        train_idx = indices[(i * batch_size) : (i + 1) * batch_size]
+        output, aux_outs = segmenter.module.decoder(
+            [
+                Xy_train["l1"][train_idx],
+                Xy_train["l2"][train_idx],
+                Xy_train["l3"][train_idx],
+                Xy_train["l4"][train_idx],
+            ]
+        )
         # NOTE: Output size can change as some layers will not be connected
         output = nn.functional.interpolate(
-            output, size=Xy_train['out_size'], mode='bilinear')
+            output, size=Xy_train["out_size"], mode="bilinear"
+        )
         soft_output = nn.LogSoftmax()(output)
         # Compute loss and backpropagate
-        loss = segm_crit(soft_output, Xy_train['y'][train_idx])
+        loss = segm_crit(soft_output, Xy_train["y"][train_idx])
         if do_kd:
-            kd_loss = kd_crit(output, Xy_train['kd_y'][train_idx])
+            kd_loss = kd_crit(output, Xy_train["kd_y"][train_idx])
             loss += kd_coeff * kd_loss
 
         if aux_weight > 0:
             for aux_out in aux_outs:
-                aux_out = nn.Upsample(size=Xy_train['out_size'],
-                                      mode='bilinear',
-                                      align_corners=False)(aux_out)
+                aux_out = nn.Upsample(
+                    size=Xy_train["out_size"], mode="bilinear", align_corners=False
+                )(aux_out)
                 aux_out = nn.LogSoftmax()(aux_out)
                 # Compute loss and backpropagate
-                loss += segm_crit(aux_out,
-                                  Xy_train['y'][train_idx]) * aux_weight
+                loss += segm_crit(aux_out, Xy_train["y"][train_idx]) * aux_weight
 
         optim_dec.zero_grad()
         loss.backward()
         # Clip gradients' norm
-        nn.utils.clip_grad_norm_(
-            segmenter.module.decoder.parameters(), dec_grad_clip)
+        nn.utils.clip_grad_norm_(segmenter.module.decoder.parameters(), dec_grad_clip)
         optim_dec.step()
         losses.update(loss.item())
         batch_time.update(time.time() - start)
         if do_polyak:
-            for p, avg_p in zip(segmenter.module.decoder.parameters(),
-                                avg_param):
-                avg_p.mul_(polyak_decay).add_(1. - polyak_decay, p.data)
+            for p, avg_p in zip(segmenter.module.decoder.parameters(), avg_param):
+                avg_p.mul_(polyak_decay).add_(1.0 - polyak_decay, p.data)
 
-    logger.info(' [{}] Train epoch: {}\t'
-                'Avg. Loss: {:.3f}\t'
-                'Avg. Time: {:.3f}'.format(
-                    ctime(),
-                    epoch, losses.avg, batch_time.avg
-                ))
+    logger.info(
+        " [{}] Train epoch: {}\t"
+        "Avg. Loss: {:.3f}\t"
+        "Avg. Time: {:.3f}".format(ctime(), epoch, losses.avg, batch_time.avg)
+    )
 
 
 @try_except
 def train_segmenter(
-        segmenter,
-        train_loader,
-        optim_enc,
-        optim_dec,
-        epoch,
-        segm_crit,
-        freeze_bn,
-        enc_grad_clip,
-        dec_grad_clip,
-        do_polyak,
-        print_every=10,
-        aux_weight=-1,
-        avg_param=None,
-        polyak_decay=0.99):
+    segmenter,
+    train_loader,
+    optim_enc,
+    optim_dec,
+    epoch,
+    segm_crit,
+    freeze_bn,
+    enc_grad_clip,
+    dec_grad_clip,
+    do_polyak,
+    print_every=10,
+    aux_weight=-1,
+    avg_param=None,
+    polyak_decay=0.99,
+):
     """Training segmenter end-to-end.
 
     Args:
@@ -197,9 +208,9 @@ def train_segmenter(
 
     """
     try:
-        train_loader.dataset.set_stage('train')
+        train_loader.dataset.set_stage("train")
     except AttributeError:
-        train_loader.dataset.dataset.set_stage('train')  # for subset
+        train_loader.dataset.dataset.set_stage("train")  # for subset
     segmenter.train()
     if freeze_bn:
         for m in segmenter.modules():
@@ -211,23 +222,24 @@ def train_segmenter(
 
     for i, sample in enumerate(train_loader):
         start = time.time()
-        image = sample['image'].cuda()
-        target = sample['mask'].cuda()
+        image = sample["image"].cuda()
+        target = sample["mask"].cuda()
         input_var = torch.autograd.Variable(image).float()
         target_var = torch.autograd.Variable(target).float()
         # Compute output
         output, aux_outs = segmenter(input_var)
         target_var = nn.functional.interpolate(
-            target_var[:, None], size=output.size()[2:], mode='nearest').long()[:, 0]
+            target_var[:, None], size=output.size()[2:], mode="nearest"
+        ).long()[:, 0]
         soft_output = nn.LogSoftmax()(output)
         # Compute loss and backpropagate
         loss = segm_crit(soft_output, target_var)
         # Compute auxiliary loss
         if aux_weight > 0:
             for aux_out in aux_outs:
-                aux_out = nn.Upsample(size=target_var.size()[1:],
-                                      mode='bilinear',
-                                      align_corners=False)(aux_out)
+                aux_out = nn.Upsample(
+                    size=target_var.size()[1:], mode="bilinear", align_corners=False
+                )(aux_out)
                 aux_out = nn.LogSoftmax()(aux_out)
                 # Compute loss and backpropagate
                 loss += segm_crit(aux_out, target_var) * aux_weight
@@ -240,25 +252,27 @@ def train_segmenter(
         # Clip gradients' norm
         if enc_grad_clip > 0:
             nn.utils.clip_grad_norm_(
-                segmenter.module.encoder.parameters(), enc_grad_clip)
+                segmenter.module.encoder.parameters(), enc_grad_clip
+            )
         if dec_grad_clip > 0:
             nn.utils.clip_grad_norm_(
-                segmenter.module.decoder.parameters(), dec_grad_clip)
+                segmenter.module.decoder.parameters(), dec_grad_clip
+            )
 
         optim_enc.step()
         optim_dec.step()
 
         if do_polyak:
             for p, avg_p in zip(segmenter.parameters(), avg_param):
-                avg_p.mul_(polyak_decay).add_(1. - polyak_decay, p.data)
+                avg_p.mul_(polyak_decay).add_(1.0 - polyak_decay, p.data)
         losses.update(loss.item())
         batch_time.update(time.time() - start)
 
         if i % print_every == 0:
-            logger.info(' [{}] Train epoch: {} [{}/{}]\t'
-                        'Avg. Loss: {:.3f}\t'
-                        'Avg. Time: {:.3f}'.format(
-                            ctime(),
-                            epoch, i, len(train_loader),
-                            losses.avg, batch_time.avg
-                        ))
+            logger.info(
+                " [{}] Train epoch: {} [{}/{}]\t"
+                "Avg. Loss: {:.3f}\t"
+                "Avg. Time: {:.3f}".format(
+                    ctime(), epoch, i, len(train_loader), losses.avg, batch_time.avg
+                )
+            )

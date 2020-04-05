@@ -1,12 +1,26 @@
 # Neural Architecture Search of Semantic Segmentation Models (in PyTorch)
 
-This repository provides official models from the paper `Fast Neural Architecture Search of Compact Semantic Segmentation Models via Auxiliary Cells`, available [here](https://arxiv.org/abs/1810.10804)
+This repository provides official models from two papers:
+1. `Fast Neural Architecture Search of Compact Semantic Segmentation Models via Auxiliary Cells`, available [here](https://arxiv.org/abs/1810.10804);
+2. `Template-Based Automatic Search of Compact Semantic Segmentation Architectures`, available [here](https://arxiv.org/abs/1904.02365).
 
+For citations:
 ```
 Fast Neural Architecture Search of Compact Semantic Segmentation Models via Auxiliary Cells
 Vladimir Nekrasov, Hao Chen, Chunhua Shen, Ian Reid
-To appear in CVPR, 2019
+CVPR, 2019
 ```
+and
+
+```
+Template-Based Automatic Search of Compact Semantic Segmentation Architectures
+Vladimir Nekrasov, Chunhua Shen, Ian Reid
+WACV, 2020
+```
+
+## Updates
+
+*05 April, 2020* : Added decoder design and pre-trained segmentation models from the WACV 2020 paper ["Template-Based Automatic Search of Compact Semantic Segmentation Architectures"](https://arxiv.org/abs/1810.10804).
 
 ## Getting Started
 
@@ -30,15 +44,36 @@ torchvision
 
 For the ease of reproduction, we have embedded all our examples inside Jupyter notebooks.
 
-### Segmentation
+### CVPR 2019 Segmentation
 
 Please refer to results on [PASCAL VOC](./examples/inference/VOC-segm.ipynb)
 
-### Depth Estimation
+### CVPR 2019 Depth Estimation
 
 Please refer to results on [NYUD-v2](./examples/inference/NYU-depth.ipynb)
 
+### WACV 2020 Segmentation CityScapes
+
+Please refer to results on [CityScapes](./examples/inference/WACV-CS-segm.ipynb)
+
+### WACV 2020 Segmentation CamVid
+
+Please refer to results on [CamVid](./examples/inference/WACV-CV-segm.ipynb)
+
+## Note on the runtime of WACV 2020 models
+
+In the paper we wrongly claimed that the latency of `arch0` and `arch1` on `2048x1048` inputs were `95.7±0.721` and `145±0.215`, correspondingly (on a single `1080Ti`). These numbers were incorrect as the model was in the training regime and not in the evaluation mode (`model.eval()` in PyTorch). Below are the characteristics of the discovered architectures with correct latency:
+
+|| arch0 | arch1
+| -------- |:-------------:| -----:|
+|Number of parameters (19 output classes)|280147|268235
+|Latency, ms on 2048x1024 inputs|52.25±0.03|97.11±0.24
+|Latency, ms on 480x360 inputs|8.97±0.10|11.51±0.14
+
+
 ## Search
+
+***All the instructions below only apply to the CVPR 2019 experiments; corresponding scripts for the WACV 2020 experiments will be released soon.***
 
 If you would like to search for architectures yourself, please follow the instructions below:
 

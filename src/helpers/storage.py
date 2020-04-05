@@ -6,6 +6,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 class RolloutStorage(object):
     """Rollout Storage for NAS. Using policy gradient without value predictions"""
+
     def __init__(self, num_steps, num_processes, action_size):
         """
 
@@ -23,8 +24,9 @@ class RolloutStorage(object):
         self.step = 0
 
     def insert(self, action, log_prob, reward):
-        inds = range(self.step * self.num_processes,
-                     (self.step + 1) * self.num_processes)
+        inds = range(
+            self.step * self.num_processes, (self.step + 1) * self.num_processes
+        )
         self.actions[inds] = action
         self.action_log_probs[inds] = log_prob.item()
         self.rewards[inds] = reward
@@ -48,8 +50,9 @@ class RolloutStorage(object):
         num_steps, num_processes = self.rewards.shape[0:2]
         batch_size = num_processes * num_steps
         mini_batch_size = batch_size // num_mini_batch
-        sampler = BatchSampler(SubsetRandomSampler(range(batch_size)),
-                               mini_batch_size, drop_last=False)
+        sampler = BatchSampler(
+            SubsetRandomSampler(range(batch_size)), mini_batch_size, drop_last=False
+        )
         for indices in sampler:
             actions_batch = self.actions[indices]
             old_actions_log_probs_batch = self.action_log_probs[indices]

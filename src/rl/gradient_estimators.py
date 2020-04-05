@@ -12,6 +12,7 @@ from helpers.utils import parse_geno_log
 class REINFORCE(object):
     """REINFORCE gradient estimator
     """
+
     def __init__(self, controller, lr, baseline_decay, max_grad_norm=2.0):
         """
         Args:
@@ -51,20 +52,21 @@ class REINFORCE(object):
         loss = -log_prob * adv
         self.optimizer.zero_grad()
         loss.backward()
-        nn.utils.clip_grad_norm_(self.controller.parameters(),
-                                 self.max_grad_norm)
+        nn.utils.clip_grad_norm_(self.controller.parameters(), self.max_grad_norm)
         self.optimizer.step()
         return loss, entropy
 
     def state_dict(self):
-        return {'baseline': self.baseline,
-                'controller': self.controller.state_dict(),
-                'optimizer': self.optimizer.state_dict()}
+        return {
+            "baseline": self.baseline,
+            "controller": self.controller.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+        }
 
     def load_state_dict(self, states):
-        self.controller.load_state_dict(states['controller'])
-        self.baseline = states['baseline']
-        self.optimizer.load_state_dict(states['optimizer'])
+        self.controller.load_state_dict(states["controller"])
+        self.baseline = states["baseline"]
+        self.optimizer.load_state_dict(states["optimizer"])
 
 
 class PPO(object):
@@ -73,9 +75,21 @@ class PPO(object):
 
     https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/master/a2c_ppo_acktr/algo/ppo.py
     """
-    def __init__(self, controller, clip_param, lr, baseline_decay,
-                 action_size=18, ppo_epoch=1, num_mini_batch=100,
-                 max_grad_norm=2.0, entropy_coef=0, num_steps=100, num_processes=1):
+
+    def __init__(
+        self,
+        controller,
+        clip_param,
+        lr,
+        baseline_decay,
+        action_size=18,
+        ppo_epoch=1,
+        num_mini_batch=100,
+        max_grad_norm=2.0,
+        entropy_coef=0,
+        num_steps=100,
+        num_processes=1,
+    ):
         """
         Args:
           controller (Controller): RNN architecture generator
@@ -102,23 +116,25 @@ class PPO(object):
         self.decay = baseline_decay
 
     def state_dict(self):
-        return {'baseline': self.baseline,
-                'rollouts': self.rollouts,
-                'controller': self.controller.state_dict(),
-                'optimizer': self.optimizer.state_dict()}
+        return {
+            "baseline": self.baseline,
+            "rollouts": self.rollouts,
+            "controller": self.controller.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+        }
 
     def load_state_dict(self, states):
-        self.controller.load_state_dict(states['controller'])
-        self.optimizer.load_state_dict(states['optimizer'])
-        self.baseline = states['baseline']
-        if not 'rollouts' in states:
+        self.controller.load_state_dict(states["controller"])
+        self.optimizer.load_state_dict(states["optimizer"])
+        self.baseline = states["baseline"]
+        if "rollouts" not in states:
             # continue from old checkpoint format
             # fill in rollouts
-            with open('genotypes.out') as ro_file:
+            with open("genotypes.out") as ro_file:
                 lines = ro_file.readlines()
                 # randomly pick
                 random.shuffle(lines)
-                records = lines[:self.rollouts.num_steps]
+                records = lines[: self.rollouts.num_steps]
             for record in records:
                 reward, action = parse_geno_log(record)
                 with torch.no_grad():
@@ -126,7 +142,7 @@ class PPO(object):
                 self.update((reward, action, log_prob), is_train=False)
             print(self.rollouts.actions)
         else:
-            self.rollouts = states['rollouts']
+            self.rollouts = states["rollouts"]
 
     def update(self, sample, is_train=True):
         reward, action, log_prob = sample
@@ -144,22 +160,34 @@ class PPO(object):
         for _ in range(self.ppo_epoch):
             data_generator = self.rollouts.generator(advantages, self.num_mini_batch)
             for sample in data_generator:
-                actions_batch, rewards_batch, old_actions_log_probs_batch, \
-                    adv_targ = sample
+                (
+                    actions_batch,
+                    rewards_batch,
+                    old_actions_log_probs_batch,
+                    adv_targ,
+                ) = sample
 
-                action_log_probs, entropy = self.controller.evaluate_actions(actions_batch)
+                action_log_probs, entropy = self.controller.evaluate_actions(
+                    actions_batch
+                )
 
-                ratio = torch.exp(action_log_probs -
-                                  torch.from_numpy(old_actions_log_probs_batch).float())
+                ratio = torch.exp(
+                    action_log_probs
+                    - torch.from_numpy(old_actions_log_probs_batch).float()
+                )
                 adv_targ_th = torch.from_numpy(adv_targ).float()
                 surr1 = ratio * adv_targ_th
-                surr2 = torch.clamp(ratio, 1.0 - self.clip_param,
-                                    1.0 + self.clip_param) * adv_targ_th
+                surr2 = (
+                    torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param)
+                    * adv_targ_th
+                )
                 action_loss = -torch.min(surr1, surr2).mean()
                 self.optimizer.zero_grad()
                 dist_entropy = entropy.mean()
                 (action_loss - dist_entropy * self.entropy_coef).backward()
-                nn.utils.clip_grad_norm_(self.controller.parameters(), self.max_grad_norm)
+                nn.utils.clip_grad_norm_(
+                    self.controller.parameters(), self.max_grad_norm
+                )
                 self.optimizer.step()
 
                 loss_epoch += action_loss.item()

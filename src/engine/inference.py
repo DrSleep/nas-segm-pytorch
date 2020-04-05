@@ -31,21 +31,22 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
 
     """
     try:
-        val_loader.dataset.set_stage('val')
+        val_loader.dataset.set_stage("val")
     except AttributeError:
-        val_loader.dataset.dataset.set_stage('val')  # for subset
+        val_loader.dataset.dataset.set_stage("val")  # for subset
     segmenter.eval()
 
     cm = np.zeros((num_classes, num_classes), dtype=int)
     with torch.no_grad():
         for i, sample in enumerate(val_loader):
-            image = sample['image']
-            target = sample['mask']
+            image = sample["image"]
+            target = sample["mask"]
             input_var = torch.autograd.Variable(image).float().cuda()
             # Compute output
             output, _ = segmenter(input_var)
-            output = nn.Upsample(size=target.size()[1:], mode='bilinear',
-                                 align_corners=False)(output)
+            output = nn.Upsample(
+                size=target.size()[1:], mode="bilinear", align_corners=False
+            )(output)
             # Compute IoU
             output = output.data.cpu().numpy().argmax(axis=1).astype(np.uint8)
             gt = target.data.cpu().numpy().astype(np.uint8)
@@ -54,27 +55,27 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
             cm += fast_cm(output[gt_idx], gt[gt_idx], num_classes)
 
             if i % print_every == 0:
-                logger.info(' [{}] Val epoch: {} [{}/{}]\t'
-                            'Mean IoU: {:.3f}'.format(
-                                ctime(),
-                                epoch, i, len(val_loader),
-                                compute_iu(cm).mean()
-                            ))
+                logger.info(
+                    " [{}] Val epoch: {} [{}/{}]\t"
+                    "Mean IoU: {:.3f}".format(
+                        ctime(), epoch, i, len(val_loader), compute_iu(cm).mean()
+                    )
+                )
     ious, n_pixels, accs = compute_ius_accs(cm)
     logger.info(" IoUs: {}, accs: {}".format(ious, accs))
     # IoU by default is 1, so we ignore all the unchanged classes
     # +1 - since we ignore background
-    present_ind = np.array(
-        [idx + 1 for idx, iu in enumerate(ious[1:]) if iu != 1.])
+    present_ind = np.array([idx + 1 for idx, iu in enumerate(ious[1:]) if iu != 1.0])
     present_ious = ious[present_ind]
     present_pixels = n_pixels[present_ind]
     miou = np.mean(present_ious)
     macc = np.mean(accs[present_ind])
     mfwiou = np.sum(present_ious * present_pixels) / np.sum(present_pixels)
     metrics = [miou, macc, mfwiou]
-    reward = np.prod(metrics) ** (1. / len(metrics))
-    info = (' [{}] Val epoch: {}/{}\tMean IoU: {:.3f}\tMean FW-IoU: {:.3f}\t'
-            'Mean Acc: {:.3f}\tReward: {:.3f}').format(
-                ctime(), epoch, epoch2, miou, mfwiou, macc, reward)
+    reward = np.prod(metrics) ** (1.0 / len(metrics))
+    info = (
+        " [{}] Val epoch: {}/{}\tMean IoU: {:.3f}\tMean FW-IoU: {:.3f}\t"
+        "Mean Acc: {:.3f}\tReward: {:.3f}"
+    ).format(ctime(), epoch, epoch2, miou, mfwiou, macc, reward)
     logger.info(info)
     return reward
