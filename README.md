@@ -21,6 +21,7 @@ WACV, 2020
 ## Updates
 
 *22 May, 2020*: Added the search script for the WACV 2020 experiments on CityScapes.
+
 *05 April, 2020* : Added decoder design and pre-trained segmentation models from the WACV 2020 paper ["Template-Based Automatic Search of Compact Semantic Segmentation Architectures"](https://arxiv.org/abs/1904.02365).
 
 ## Getting Started
