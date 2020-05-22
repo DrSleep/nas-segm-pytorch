@@ -19,6 +19,7 @@ VAL_BATCH_SIZE = 64
 VAL_CROP_SIZE = 400
 VAL_DIR = "./data/datasets/VOCdevkit/"
 VAL_LIST = "./data/lists/train+.lst"  # meta-train and meta-val learning
+VAL_OMIT_CLASSES = [0]  # ignore background when computing the reward
 VAL_RESIZE_SIDE = 400
 
 # AUGMENTATIONS CONFIGURATION

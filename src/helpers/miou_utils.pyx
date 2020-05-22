@@ -44,7 +44,8 @@ def compute_iu(np.ndarray[np.int_t, ndim=2] cm):
     cdef unsigned int ii = 0
     cdef unsigned int denom = 0
     cdef unsigned int n_classes = cm.shape[0]
-    cdef np.ndarray[np.float_t, ndim=1] IU = np.ones(n_classes)
+    cdef unsigned int default_val = 2  # any value larger than 1 would suit here
+    cdef np.ndarray[np.float_t, ndim=1] IU = np.ones(n_classes) * default_val
     cdef np.intp_t i
     for i in xrange(n_classes):
         pi = sum(cm[:, i])#.sum()
@@ -71,9 +72,10 @@ def compute_ius_accs(np.ndarray[np.int_t, ndim=2] cm):
     cdef unsigned int ii = 0 # n_{ii} - predicted of class i and belonging to class i
     cdef unsigned int denom = 0
     cdef unsigned int n_classes = cm.shape[0]
-    cdef np.ndarray[np.float_t, ndim=1] IU = np.ones(n_classes)
-    cdef np.ndarray[np.float_t, ndim=1] accs = np.ones(n_classes)
-    cdef np.ndarray[np.int_t, ndim=1] n_pixels = np.ones(n_classes, dtype=int)
+    cdef unsigned int default_val = 2  # any value larger than 1 would suit here
+    cdef np.ndarray[np.float_t, ndim=1] IU = np.ones(n_classes) * default_val
+    cdef np.ndarray[np.float_t, ndim=1] accs = np.ones(n_classes) * default_val
+    cdef np.ndarray[np.int_t, ndim=1] n_pixels = np.ones(n_classes, dtype=int) * default_val
     cdef np.intp_t i
     for i in xrange(n_classes):
         pi = sum(cm[:, i])#.sum()

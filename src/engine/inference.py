@@ -15,7 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 @try_except
-def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=10):
+def validate(
+    segmenter,
+    val_loader,
+    epoch,
+    epoch2,
+    num_classes=-1,
+    print_every=10,
+    omit_classes=[0],
+):
     """Validate segmenter
 
     Args:
@@ -25,6 +33,7 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
       epoch2 (int) : current segm. training epoch
       num_classes (int) : number of segmentation classes
       print_every (int) : how often to print out information
+      omit_classes (list of int) : indices of classes to ignore when computing metrics
 
     Returns:
       Reward (float)
@@ -60,18 +69,23 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
                 logger.info(
                     " Val epoch: {} [{}/{}]\t"
                     "Mean IoU: {:.3f}".format(
-                        epoch, i, len(val_loader), compute_iu(cm).mean()
+                        epoch,
+                        i,
+                        len(val_loader),
+                        np.mean([iu for iu in compute_iu(cm) if iu <= 1.0]),
                     )
                 )
     ious, n_pixels, accs = compute_ius_accs(cm)
     logger.info(" IoUs: {}, accs: {}".format(ious, accs))
-    # IoU by default is 1, so we ignore all the unchanged classes
-    # +1 - since we ignore background
-    present_ind = np.array([idx + 1 for idx, iu in enumerate(ious[1:]) if iu != 1.0])
+    # IoU by default is 2, so we ignore all the unchanged classes
+    present_ind = np.array([idx for idx, iu in enumerate(ious) if iu <= 1.0])
+    # And ignore classes that might skew the evaluation metrics (e.g., background)
+    present_ind = np.setdiff1d(present_ind, omit_classes)
     present_ious = ious[present_ind]
     present_pixels = n_pixels[present_ind]
+    present_accs = accs[present_ind]
     miou = np.mean(present_ious)
-    macc = np.mean(accs[present_ind])
+    macc = np.mean(present_accs)
     mfwiou = np.sum(present_ious * present_pixels) / np.sum(present_pixels)
     metrics = [miou, macc, mfwiou]
     reward = np.prod(metrics) ** (1.0 / len(metrics))

@@ -53,6 +53,17 @@ def apply_cmap(inp, cmap):
     return cmap[inp]
 
 
+def serialise(x):
+    if isinstance(x, (list, tuple)):
+        return [serialise(item) for item in x]
+    elif isinstance(x, np.ndarray):
+        return x.tolist()
+    elif isinstance(x, (int, float, str)):
+        return x
+    else:
+        raise TypeError(f"Unknown type {type(x)} of {x}")
+
+
 class Saver:
     """Saver class for managing parameters"""
 
@@ -72,7 +83,7 @@ class Saver:
             os.makedirs(ckpt_dir)
         with open("{}/args.json".format(ckpt_dir), "w") as f:
             json.dump(
-                {k: v for k, v in args.items() if isinstance(v, (int, float, str))},
+                {k: serialise(v) for k, v in args.items()},
                 f,
                 sort_keys=True,
                 indent=4,

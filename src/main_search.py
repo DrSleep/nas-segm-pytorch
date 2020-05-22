@@ -164,6 +164,13 @@ def get_arguments():
         default=VAL_BATCH_SIZE,
         help="Batch size to validate the segmenter model.",
     )
+    parser.add_argument(
+        "--val-omit-classes",
+        type=int,
+        nargs="*",
+        default=VAL_OMIT_CLASSES,
+        help="Classes to omit in the validation.",
+    )
 
     # Encoder
     parser.add_argument(
@@ -634,6 +641,7 @@ def main():
                         epoch_segm,
                         num_classes=args.num_classes[task_idx],
                         print_every=args.print_every,
+                        omit_classes=args.val_omit_classes,
                     )
                     # Verifying if we are continuing training this architecture.
                     c_task_ps = task_ps[task_idx][

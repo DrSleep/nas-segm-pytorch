@@ -26,4 +26,5 @@ PYTHONPATH=$(pwd):$PYTHONPATH/src python src/main_search.py \
     --train-dir './data/datasets/cs' \
     --val-dir './data/datasets/cs' \
     --train-list './data/lists/train.cs' \
-    --val-list './data/lists/train.cs'
+    --val-list './data/lists/train.cs' \
+    --val-omit-classes
