@@ -41,7 +41,7 @@ DEC_GRAD_CLIP = 3.0
 DEC_LR = [3e-3, 3e-3]
 DEC_MOM = [0.9] * 3
 DEC_OPTIM = "adam"
-DEC_WD = [0] * 3
+DEC_WD = [1e-5] * 3
 
 # GENERAL OPTIMISATION CONFIGURATION
 DO_KD = True
