@@ -331,7 +331,10 @@ def get_arguments():
         "--num-ops", type=int, default=NUM_OPS, help="Number of unique operations."
     )
     parser.add_argument(
-        "--num-agg-ops", type=int, default=NUM_AGG_OPS, help="Number of unique operations."
+        "--num-agg-ops",
+        type=int,
+        default=NUM_AGG_OPS,
+        help="Number of unique operations.",
     )
     parser.add_argument(
         "--agg-cell-size",
@@ -339,23 +342,31 @@ def get_arguments():
         default=AGG_CELL_SIZE,
         help="Common size inside decoder",
     )
-    parser.add_argument("--ctrl-baseline-decay", type=float, default=CTRL_BASELINE_DECAY, help="Baseline decay.")
+    parser.add_argument(
+        "--ctrl-baseline-decay",
+        type=float,
+        default=CTRL_BASELINE_DECAY,
+        help="Baseline decay.",
+    )
     parser.add_argument(
         "--ctrl-version",
         type=str,
-        choices=['cvpr', 'wacv'],
+        choices=["cvpr", "wacv"],
         default=CTRL_VERSION,
         help="Type of microcontroller",
     )
     parser.add_argument(
         "--ctrl-agent",
         type=str,
-        choices=['ppo', 'reinforce'],
+        choices=["ppo", "reinforce"],
         default=CTRL_AGENT,
         help="Gradient estimator algorithm",
     )
     parser.add_argument(
-        "--dec-num-cells", type=int, default=DEC_NUM_CELLS, help="Number of cells to apply."
+        "--dec-num-cells",
+        type=int,
+        default=DEC_NUM_CELLS,
+        help="Number of cells to apply.",
     )
     parser.add_argument(
         "--cell-num-layers",
@@ -424,9 +435,7 @@ def main():
     random.seed(args.random_seed)
 
     # Initialise encoder
-    encoder = create_encoder(
-        ctrl_version=args.ctrl_version,
-    )
+    encoder = create_encoder(ctrl_version=args.ctrl_version,)
     logger.info(
         " Loaded Encoder with #TOTAL PARAMS={:3.2f}M".format(
             compute_params(encoder)[0] / 1e6
@@ -438,6 +447,7 @@ def main():
     kd_crit = None
     if args.do_kd:
         from kd.rf_lw.model_lw_v2 import rf_lw152 as kd_model
+
         kd_crit = nn.MSELoss().cuda()
         kd_net = (
             kd_model(pretrained=True, num_classes=args.num_classes[0]).cuda().eval()
@@ -471,9 +481,9 @@ def main():
     )
 
     def create_segmenter(encoder):
-        if args.ctrl_version == 'cvpr':
+        if args.ctrl_version == "cvpr":
             from nn.micro_decoders import MicroDecoder as Decoder
-        elif args.ctrl_version == 'wacv':
+        elif args.ctrl_version == "wacv":
             from nn.micro_decoders import TemplateDecoder as Decoder
         with torch.no_grad():
             decoder_config, entropy, log_prob = agent.controller.sample()
@@ -657,15 +667,14 @@ def main():
             arch_writer.flush()
             # Sample a new architecture
             del segmenter
-            encoder = create_encoder(
-                ctrl_version=args.ctrl_version,
-            )
+            encoder = create_encoder(ctrl_version=args.ctrl_version,)
             segmenter, decoder_config, entropy, log_prob = create_segmenter(encoder)
             del encoder
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        format='%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s',
-        level=logging.INFO)
+        format="%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s",
+        level=logging.INFO,
+    )
     main()

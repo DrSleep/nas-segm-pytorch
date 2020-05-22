@@ -3,6 +3,7 @@
 import torch
 import torch.nn.functional as F
 
+
 def calc_prob(critic_logits, x):
     """compute entropy and log_prob."""
     softmax_logits, log_softmax_logits = critic_logits
@@ -29,4 +30,3 @@ def sample_logits(critic_logits):
 def torch_long(x):
     x = torch.tensor(x, dtype=torch.long)
     return x.view((1, 1))
-

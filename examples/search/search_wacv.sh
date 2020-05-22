@@ -27,6 +27,3 @@ PYTHONPATH=$(pwd):$PYTHONPATH/src python src/main_search.py \
     --val-dir './data/datasets/cs' \
     --train-list './data/lists/train.cs' \
     --val-list './data/lists/train.cs'
-
-
-

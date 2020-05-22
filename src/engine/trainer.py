@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from helpers.utils import AverageMeter, ctime, try_except
+from helpers.utils import AverageMeter, try_except
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,10 @@ def populate_task0(segmenter, train_loader, kd_net, n_train, do_kd=False):
                 kd_y = kd_net(image)
                 Xy_train["kd_y"].extend(
                     nn.functional.interpolate(
-                        kd_y, size=enc_outputs[0].size()[2:], mode="bilinear", align_corners=False
+                        kd_y,
+                        size=enc_outputs[0].size()[2:],
+                        mode="bilinear",
+                        align_corners=False,
                     ).unbind(0)
                 )
             n_curr += image.size(0)
@@ -127,7 +130,9 @@ def train_task0(
         start = time.time()
         train_idx = indices[(i * batch_size) : (i + 1) * batch_size]
         encoder_outputs = [
-            Xy_train[key][train_idx] for key in Xy_train.keys() if key not in ['y', 'kd_y', 'out_size']
+            Xy_train[key][train_idx]
+            for key in Xy_train.keys()
+            if key not in ["y", "kd_y", "out_size"]
         ]
         output = segmenter.module.decoder(encoder_outputs)
         if isinstance(output, tuple):
@@ -146,9 +151,8 @@ def train_task0(
         if aux_weight > 0:
             for aux_out in aux_outs:
                 aux_out = nn.Upsample(
-                    size=Xy_train["out_size"],
-                    mode="bilinear",
-                    align_corners=False)(aux_out)
+                    size=Xy_train["out_size"], mode="bilinear", align_corners=False
+                )(aux_out)
                 aux_out = nn.LogSoftmax()(aux_out)
                 # Compute loss and backpropagate
                 loss += segm_crit(aux_out, Xy_train["y"][train_idx]) * aux_weight
@@ -165,9 +169,9 @@ def train_task0(
                 avg_p.mul_(polyak_decay).add_(1.0 - polyak_decay, p.data)
 
     logger.info(
-        " [{}] Train epoch: {}\t"
+        " Train epoch: {}\t"
         "Avg. Loss: {:.3f}\t"
-        "Avg. Time: {:.3f}".format(ctime(), epoch, losses.avg, batch_time.avg)
+        "Avg. Time: {:.3f}".format(epoch, losses.avg, batch_time.avg)
     )
 
 
@@ -228,7 +232,7 @@ def train_segmenter(
         # Compute output
         output = segmenter(image)
         if isinstance(output, tuple):
-            output, aux_outputs = output
+            output, aux_outs = output
         target_var = nn.functional.interpolate(
             target_var[:, None], size=output.size()[2:], mode="nearest"
         ).long()[:, 0]
@@ -271,9 +275,9 @@ def train_segmenter(
 
         if i % print_every == 0:
             logger.info(
-                " [{}] Train epoch: {} [{}/{}]\t"
+                " Train epoch: {} [{}/{}]\t"
                 "Avg. Loss: {:.3f}\t"
                 "Avg. Time: {:.3f}".format(
-                    ctime(), epoch, i, len(train_loader), losses.avg, batch_time.avg
+                    epoch, i, len(train_loader), losses.avg, batch_time.avg
                 )
             )

@@ -62,30 +62,25 @@ class MicroController(nn.Module):
 
         # Number of decoder connections
         total_num_cell_inputs = (
-            self._num_cells_per_decoder_block *
-            self._num_inputs_per_cell *
-            self.dec_num_cells
+            self._num_cells_per_decoder_block
+            * self._num_inputs_per_cell
+            * self.dec_num_cells
         )
         # Number of connections within the cell
-        total_num_cell_connections = (
-            self._num_inputs_per_cell_layer *
-            (self.cell_num_layers - 1)  # -1 for the input layer
-        )
+        total_num_cell_connections = self._num_inputs_per_cell_layer * (
+            self.cell_num_layers - 1
+        )  # -1 for the input layer
         # Number of ops within the cell
         total_num_cell_ops = (
             # Within the cell we do not need to predict the first input,
             # but we still keep it around as dummy,
             # hence need to multiply by two
-            2 *
-            self._num_inputs_per_cell *
-            self._num_ops_per_cell_input +
-            total_num_cell_connections *
-            self._num_ops_per_cell_layer_input
+            2 * self._num_inputs_per_cell * self._num_ops_per_cell_input
+            + total_num_cell_connections * self._num_ops_per_cell_layer_input
         )
         self._action_len = (
-            total_num_cell_inputs +
-            total_num_cell_connections +
-            total_num_cell_ops)
+            total_num_cell_inputs + total_num_cell_connections + total_num_cell_ops
+        )
 
         # Controller
         self.rnn = nn.LSTM(lstm_hidden_size, lstm_hidden_size, lstm_num_layers)
@@ -96,12 +91,16 @@ class MicroController(nn.Module):
         # Connection predictions: predicting inputs to the cell
         conn_fcs = []
         for i in range(self.dec_num_cells):
-            for _ in range(self._num_cells_per_decoder_block * self._num_inputs_per_cell):
+            for _ in range(
+                self._num_cells_per_decoder_block * self._num_inputs_per_cell
+            ):
                 # each time the sampling pool grows by number of outputs in the cell
                 conn_fcs.append(
                     nn.Linear(
                         lstm_hidden_size,
-                        self.enc_num_layers + i * self._num_outputs_per_cell))
+                        self.enc_num_layers + i * self._num_outputs_per_cell,
+                    )
+                )
         self.conn_fcs = nn.ModuleList(conn_fcs)
 
         # Contextual predictions: predicting connectivity within the cell
@@ -113,9 +112,12 @@ class MicroController(nn.Module):
                     # For each layer input we re-use it together the aggregated output of all
                     nn.Linear(
                         lstm_hidden_size,
-                        self._num_inputs_per_cell +
-                        (self._num_inputs_per_cell_layer +
-                         self._num_outputs_per_cell_layer) * i
+                        self._num_inputs_per_cell
+                        + (
+                            self._num_inputs_per_cell_layer
+                            + self._num_outputs_per_cell_layer
+                        )
+                        * i,
                     )
                 )
         self.ctx_fcs = nn.ModuleList(ctx_fcs)
@@ -183,11 +185,16 @@ class MicroController(nn.Module):
         for layer in range(self.dec_num_cells):
             if do_sample:
                 conn = []
-            for i in range(self._num_cells_per_decoder_block * self._num_inputs_per_cell):
+            for i in range(
+                self._num_cells_per_decoder_block * self._num_inputs_per_cell
+            ):
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.conn_fcs[
-                    layer * self._num_cells_per_decoder_block * self._num_inputs_per_cell +
-                    i * self._num_outputs_per_cell](output.squeeze(0))
+                    layer
+                    * self._num_cells_per_decoder_block
+                    * self._num_inputs_per_cell
+                    + i * self._num_outputs_per_cell
+                ](output.squeeze(0))
                 critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     index, curr_ent, curr_log_prob = sample_logits(critic_logits)
@@ -238,7 +245,9 @@ class MicroController(nn.Module):
                     log_prob += curr_log_prob
                     inputs = output
                 # Sample operation twice
-                for i in range(self._num_inputs_per_cell_layer * self._num_ops_per_cell_layer_input):
+                for i in range(
+                    self._num_inputs_per_cell_layer * self._num_ops_per_cell_layer_input
+                ):
                     output, hidden = self.rnn(inputs, hidden)
                     logits = self.linear_op(output.squeeze(0))
                     critic_logits = compute_critic_logits(logits)
@@ -334,17 +343,19 @@ class TemplateController(nn.Module):
 
     """
 
-    def __init__(self,
-                 enc_num_layers,
-                 num_ops,
-                 num_agg_ops,
-                 lstm_hidden_size=100,
-                 lstm_num_layers=2,
-                 dec_num_cells=3,
-                 cell_num_layers=3,
-                 cell_max_repeat=4,
-                 cell_max_stride=2,
-                 **kwargs):
+    def __init__(
+        self,
+        enc_num_layers,
+        num_ops,
+        num_agg_ops,
+        lstm_hidden_size=100,
+        lstm_num_layers=2,
+        dec_num_cells=3,
+        cell_num_layers=3,
+        cell_max_repeat=4,
+        cell_max_stride=2,
+        **kwargs,
+    ):
         """
         Args:
           enc_num_layers (int) : initial size of the sampling pool
@@ -385,10 +396,15 @@ class TemplateController(nn.Module):
         self.template_op = nn.Linear(lstm_hidden_size, self.dec_num_cells)
         self.repeat_op = nn.Linear(lstm_hidden_size, cell_max_repeat)
         self.stride_op = nn.Linear(lstm_hidden_size, cell_max_stride)
-        self.dummy_stride_op = nn.Linear(lstm_hidden_size, 1)  # always predicting a single stride
+        self.dummy_stride_op = nn.Linear(
+            lstm_hidden_size, 1
+        )  # always predicting a single stride
         self.g_emb = nn.Parameter(torch.zeros(1, 1, lstm_hidden_size))
 
-        self._action_len = self._num_ops_per_template * self.dec_num_cells + self._num_actions_per_layer * self.cell_num_layers
+        self._action_len = (
+            self._num_ops_per_template * self.dec_num_cells
+            + self._num_actions_per_layer * self.cell_num_layers
+        )
 
         # connections
         ctx_fcs = []
@@ -397,7 +413,10 @@ class TemplateController(nn.Module):
                 ctx_fcs.append(
                     # Each time the sampling pool grows by i
                     nn.Linear(
-                        lstm_hidden_size, self.enc_num_layers + i * self._num_outputs_per_template))
+                        lstm_hidden_size,
+                        self.enc_num_layers + i * self._num_outputs_per_template,
+                    )
+                )
         self.ctx_fcs = nn.ModuleList(ctx_fcs)
 
         # init parameters
@@ -416,9 +435,7 @@ class TemplateController(nn.Module):
 
     def evaluate(self, action):
         config = TemplateController.action2config(
-            action,
-            dec_block=self.dec_num_cells,
-            ctx_block=self.cell_num_layers,
+            action, dec_block=self.dec_num_cells, ctx_block=self.cell_num_layers,
         )
         return self.forward(config)
 
@@ -449,8 +466,10 @@ class TemplateController(nn.Module):
         inputs = self.g_emb
 
         pool_hiddens = []
-        hidden = (torch.zeros([self.lstm_num_layers, 1, self.lstm_hidden_size]),
-                  torch.zeros([self.lstm_num_layers, 1, self.lstm_hidden_size]))
+        hidden = (
+            torch.zeros([self.lstm_num_layers, 1, self.lstm_hidden_size]),
+            torch.zeros([self.lstm_num_layers, 1, self.lstm_hidden_size]),
+        )
         entropy = 0
         log_prob = 0
 
@@ -471,7 +490,7 @@ class TemplateController(nn.Module):
                     logits = self.linear_agg_op(output.squeeze(0))
                 else:
                     logits = self.linear_op(output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     cell.append(int(op_id))
@@ -490,7 +509,7 @@ class TemplateController(nn.Module):
             for i in range(self._num_inputs_per_template):
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.ctx_fcs[layer * 2 + i](output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     pos, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     cfg.append(int(pos))
@@ -504,7 +523,7 @@ class TemplateController(nn.Module):
             for i in range(1):
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.template_op(output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     cfg.append(int(op_id))
@@ -518,7 +537,7 @@ class TemplateController(nn.Module):
             for i in range(1):
                 output, hidden = self.rnn(inputs, hidden)
                 logits = self.repeat_op(output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     cfg.append(int(op_id))
@@ -531,12 +550,12 @@ class TemplateController(nn.Module):
             # Sample stride
             for i in range(1):
                 output, hidden = self.rnn(inputs, hidden)
-                if (layer >= (self.cell_num_layers // 2)):
+                if layer >= (self.cell_num_layers // 2):
                     # We only predict stride after half of the layers were predicted
                     logits = self.dummy_stride_op(output.squeeze(0))
                 else:
                     logits = self.stride_op(output.squeeze(0))
-                critic_logits = (compute_critic_logits(logits))
+                critic_logits = compute_critic_logits(logits)
                 if do_sample:
                     op_id, curr_ent, curr_log_prob = sample_logits(critic_logits)
                     cfg.append(int(op_id))
@@ -580,13 +599,23 @@ class TemplateController(nn.Module):
         return action
 
     @staticmethod
-    def action2config(action, enc_end=0, dec_block=3, ctx_block=3, num_ops_per_template=3, num_actions_per_layer=5):
+    def action2config(
+        action,
+        enc_end=0,
+        dec_block=3,
+        ctx_block=3,
+        num_ops_per_template=3,
+        num_actions_per_layer=5,
+    ):
         decoder = []
         structure = []
         for i in range(dec_block):
-            decoder.append(action[(i * num_ops_per_template) : (i + 1) * num_ops_per_template])
-        action = action[dec_block * num_ops_per_template : ]
+            decoder.append(
+                action[(i * num_ops_per_template) : (i + 1) * num_ops_per_template]
+            )
+        action = action[dec_block * num_ops_per_template :]
         for j in range(ctx_block):
-            structure.append(action[(j * num_actions_per_layer) : (j + 1) * num_actions_per_layer])
+            structure.append(
+                action[(j * num_actions_per_layer) : (j + 1) * num_actions_per_layer]
+            )
         return [decoder, structure]
-

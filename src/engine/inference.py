@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from helpers.miou_utils import compute_iu, compute_ius_accs, fast_cm
-from helpers.utils import ctime, try_except
+from helpers.utils import try_except
 
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,9 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
 
             if i % print_every == 0:
                 logger.info(
-                    " [{}] Val epoch: {} [{}/{}]\t"
+                    " Val epoch: {} [{}/{}]\t"
                     "Mean IoU: {:.3f}".format(
-                        ctime(), epoch, i, len(val_loader), compute_iu(cm).mean()
+                        epoch, i, len(val_loader), compute_iu(cm).mean()
                     )
                 )
     ious, n_pixels, accs = compute_ius_accs(cm)
@@ -76,8 +76,8 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
     metrics = [miou, macc, mfwiou]
     reward = np.prod(metrics) ** (1.0 / len(metrics))
     info = (
-        " [{}] Val epoch: {}/{}\tMean IoU: {:.3f}\tMean FW-IoU: {:.3f}\t"
+        " Val epoch: {}/{}\tMean IoU: {:.3f}\tMean FW-IoU: {:.3f}\t"
         "Mean Acc: {:.3f}\tReward: {:.3f}"
-    ).format(ctime(), epoch, epoch2, miou, mfwiou, macc, reward)
+    ).format(epoch, epoch2, miou, mfwiou, macc, reward)
     logger.info(info)
     return reward

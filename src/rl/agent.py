@@ -16,7 +16,7 @@ def create_agent(
     ctrl_lr,
     ctrl_baseline_decay,
     ctrl_agent,
-    ctrl_version='cvpr',
+    ctrl_version="cvpr",
 ):
     """Create Agent
 
@@ -41,9 +41,9 @@ def create_agent(
       gradient estimator
 
     """
-    if ctrl_version == 'cvpr':
+    if ctrl_version == "cvpr":
         from rl.micro_controllers import MicroController as Controller
-    elif ctrl_version == 'wacv':
+    elif ctrl_version == "wacv":
         from rl.micro_controllers import TemplateController as Controller
 
     controller = Controller(
