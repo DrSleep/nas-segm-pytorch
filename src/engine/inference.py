@@ -43,7 +43,9 @@ def validate(segmenter, val_loader, epoch, epoch2, num_classes=-1, print_every=1
             target = sample["mask"]
             input_var = torch.autograd.Variable(image).float().cuda()
             # Compute output
-            output, _ = segmenter(input_var)
+            output = segmenter(input_var)
+            if isinstance(output, tuple):
+                output, _ = output
             output = nn.Upsample(
                 size=target.size()[1:], mode="bilinear", align_corners=False
             )(output)

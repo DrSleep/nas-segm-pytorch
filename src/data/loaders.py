@@ -13,7 +13,7 @@ from .datasets import (
     Normalise,
     RandomCrop,
     RandomMirror,
-    ResizeShorterScale,
+    ResizeScale,
     ToTensor,
 )
 
@@ -42,7 +42,7 @@ def create_loaders(args):
     logger = logging.getLogger(__name__)
     composed_trn = transforms.Compose(
         [
-            ResizeShorterScale(args.shorter_side[0], args.low_scale, args.high_scale),
+            ResizeScale(args.resize_side[0], args.low_scale, args.high_scale, args.resize_longer_side),
             RandomMirror(),
             RandomCrop(args.crop_size[0]),
             Normalise(*args.normalise_params),
@@ -51,7 +51,7 @@ def create_loaders(args):
     )
     composed_val = transforms.Compose(
         [
-            ResizeShorterScale(args.val_shorter_side, 1, 1),
+            ResizeScale(args.val_resize_side, 1, 1, args.resize_longer_side),
             CentralCrop(args.val_crop_size),
             Normalise(*args.normalise_params),
             ToTensor(),

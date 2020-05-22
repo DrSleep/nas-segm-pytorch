@@ -36,37 +36,38 @@ def populate_task0(segmenter, train_loader, kd_net, n_train, do_kd=False):
     with torch.no_grad():
         n_curr = 0
         for sample in train_loader:
-            image = sample["image"].cuda()
+            image = sample["image"].float().cuda()
             target = sample["mask"].float()
-            input_var = torch.autograd.Variable(image).float()
-            l1, l2, l3, l4 = segmenter.module.encoder(input_var)
-            Xy_train["l1"].append(l1)
-            Xy_train["l2"].append(l2)
-            Xy_train["l3"].append(l3)
-            Xy_train["l4"].append(l4)
-            Xy_train["y"].append(
+            enc_outputs = segmenter.module.encoder(image)
+            for i, enc_output in enumerate(enc_outputs):
+                Xy_train[i].extend(enc_output.unbind(0))
+            Xy_train["y"].extend(
                 nn.functional.interpolate(
-                    target[:, None], size=l1.size()[2:], mode="nearest"
+                    target[:, None], size=enc_outputs[0].size()[2:], mode="nearest"
                 )
-                .long()[:, 0]
+                .long()
+                .squeeze(dim=1)
                 .cuda()
+                .unbind(0)
             )
             if do_kd:
-                kd_y = kd_net(input_var)
-                Xy_train["kd_y"].append(
+                kd_y = kd_net(image)
+                Xy_train["kd_y"].extend(
                     nn.functional.interpolate(
-                        kd_y, size=l1.size()[2:], mode="bilinear", align_corners=False
-                    )
+                        kd_y, size=enc_outputs[0].size()[2:], mode="bilinear", align_corners=False
+                    ).unbind(0)
                 )
-            n_curr += l1.size(0)
+            n_curr += image.size(0)
             if n_curr >= n_train:
-                Xy_train["out_size"] = l1.size()[2:]
+                # By default we are taking the size of the first encoder output
+                # as our output size
+                Xy_train["out_size"] = enc_outputs[0].size()[2:]
                 logger.info(" Populated Xy_train, N = {}".format(n_curr))
                 break
         # concat into a single tensor
         for k, v in Xy_train.items():
             if k != "out_size":
-                Xy_train[k] = torch.cat(v, 0)
+                Xy_train[k] = torch.stack(v)
     return Xy_train
 
 
@@ -109,7 +110,7 @@ def train_task0(
 
     """
     # Train
-    n_examples = Xy_train["l1"].size(0)
+    n_examples = Xy_train[0].size(0)
     batch_size = min(batch_size, n_examples)
     n_passes = n_examples // batch_size
     indices = np.arange(n_examples)
@@ -125,14 +126,12 @@ def train_task0(
     for i in range(n_passes):
         start = time.time()
         train_idx = indices[(i * batch_size) : (i + 1) * batch_size]
-        output, aux_outs = segmenter.module.decoder(
-            [
-                Xy_train["l1"][train_idx],
-                Xy_train["l2"][train_idx],
-                Xy_train["l3"][train_idx],
-                Xy_train["l4"][train_idx],
-            ]
-        )
+        encoder_outputs = [
+            Xy_train[key][train_idx] for key in Xy_train.keys() if key not in ['y', 'kd_y', 'out_size']
+        ]
+        output = segmenter.module.decoder(encoder_outputs)
+        if isinstance(output, tuple):
+            output, aux_outs = output
         # NOTE: Output size can change as some layers will not be connected
         output = nn.functional.interpolate(
             output, size=Xy_train["out_size"], mode="bilinear"
@@ -147,8 +146,9 @@ def train_task0(
         if aux_weight > 0:
             for aux_out in aux_outs:
                 aux_out = nn.Upsample(
-                    size=Xy_train["out_size"], mode="bilinear", align_corners=False
-                )(aux_out)
+                    size=Xy_train["out_size"],
+                    mode="bilinear",
+                    align_corners=False)(aux_out)
                 aux_out = nn.LogSoftmax()(aux_out)
                 # Compute loss and backpropagate
                 loss += segm_crit(aux_out, Xy_train["y"][train_idx]) * aux_weight
@@ -222,12 +222,13 @@ def train_segmenter(
 
     for i, sample in enumerate(train_loader):
         start = time.time()
-        image = sample["image"].cuda()
+        image = sample["image"].float().cuda()
         target = sample["mask"].cuda()
-        input_var = torch.autograd.Variable(image).float()
         target_var = torch.autograd.Variable(target).float()
         # Compute output
-        output, aux_outs = segmenter(input_var)
+        output = segmenter(image)
+        if isinstance(output, tuple):
+            output, aux_outputs = output
         target_var = nn.functional.interpolate(
             target_var[:, None], size=output.size()[2:], mode="nearest"
         ).long()[:, 0]

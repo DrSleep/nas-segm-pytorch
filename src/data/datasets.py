@@ -138,21 +138,27 @@ class ResizeShorter(object):
         return {"image": image, "mask": mask}
 
 
-class ResizeShorterScale(object):
-    """Resize shorter side to a given value and randomly scale."""
+class ResizeScale(object):
+    """Resize (shorter or longer) side to a given value and randomly scale."""
 
-    def __init__(self, shorter_side, low_scale, high_scale):
-        assert isinstance(shorter_side, int)
-        self.shorter_side = shorter_side
+    def __init__(self, resize_side, low_scale, high_scale, longer=False):
+        assert isinstance(resize_side, int)
+        self.resize_side = resize_side
         self.low_scale = low_scale
         self.high_scale = high_scale
+        self.longer = longer
 
     def __call__(self, sample):
         image, mask = sample["image"], sample["mask"]
-        min_side = min(image.shape[:2])
         scale = np.random.uniform(self.low_scale, self.high_scale)
-        if min_side * scale < self.shorter_side:
-            scale = self.shorter_side * 1.0 / min_side
+        if self.longer:
+            mside = max(image.shape[:2])
+            if mside * scale > self.resize_side:
+                scale = self.resize_side * 1.0 / mside
+        else:
+            mside = min(image.shape[:2])
+            if mside * scale < self.resize_side:
+                scale = self.resize_side * 1.0 / mside
         image = cv2.resize(
             image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC
         )
@@ -241,8 +247,8 @@ class PascalCustomDataset(Dataset):
             datalist = f.readlines()
         try:
             self.datalist = [
-                (k, v)
-                for k, v, _ in map(
+                (k[0], k[1])
+                for k in map(
                     lambda x: x.decode("utf-8").strip("\n").split("\t"), datalist
                 )
             ]
@@ -258,8 +264,8 @@ class PascalCustomDataset(Dataset):
     def set_stage(self, stage):
         self.stage = stage
 
-    def set_config(self, crop_size, shorter_side):
-        self.transform_trn.transforms[0].shorter_side = shorter_side
+    def set_config(self, crop_size, resize_side):
+        self.transform_trn.transforms[0].resize_side = resize_side
         self.transform_trn.transforms[2].crop_size = crop_size
 
     def __len__(self):

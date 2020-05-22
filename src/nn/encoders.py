@@ -77,6 +77,7 @@ def mbv2(pretrained=False, **kwargs):
     return model
 
 
-def create_encoder(pretrained="voc"):
+def create_encoder(pretrained="voc", ctrl_version="cvpr", **kwargs):
     """Create Encoder"""
-    return mbv2(pretrained=pretrained)
+    return_layers = [1, 2, 4, 6] if ctrl_version == "cvpr" else [1, 2]
+    return mbv2(pretrained=pretrained, return_layers=return_layers, **kwargs)

@@ -20,7 +20,8 @@ WACV, 2020
 
 ## Updates
 
-*05 April, 2020* : Added decoder design and pre-trained segmentation models from the WACV 2020 paper ["Template-Based Automatic Search of Compact Semantic Segmentation Architectures"](https://arxiv.org/abs/1810.10804).
+*22 May, 2020*: Added the search script for the WACV 2020 experiments on CityScapes.
+*05 April, 2020* : Added decoder design and pre-trained segmentation models from the WACV 2020 paper ["Template-Based Automatic Search of Compact Semantic Segmentation Architectures"](https://arxiv.org/abs/1904.02365).
 
 ## Getting Started
 
@@ -73,11 +74,11 @@ In the paper we wrongly claimed that the latency of `arch0` and `arch1` on `2048
 
 ## Search
 
-***All the instructions below only apply to the CVPR 2019 experiments; corresponding scripts for the WACV 2020 experiments will be released soon.***
-
 If you would like to search for architectures yourself, please follow the instructions below:
 
-### Prepare data
+### CVPR 2019 (PASCAL VOC)
+
+#### Prepare data
 
 You would need to have PASCAL VOC segmentation dataset expanded with annotations from BSD.
 
@@ -88,7 +89,7 @@ mkdir data/datasets
 ln -s /path_to_voc/VOCdevkit data/datasets/
 ```
 
-### Running search
+#### Running search
 
 We rely on a Cython-based script for calculating mean IoU. In order to build the corresponding files, run the following:
 
@@ -101,9 +102,28 @@ After that, you can execute `./examples/search/search.sh` that will start the se
 
 ***[!] Please note that all the hyperparameters were tuned for running the search process on 2 GPUs, each with at least 11GB of memory. In case when your setup differs, you would need to tune the hyperparameters accordingly.***
 
-### Checking the results
+#### Checking the results
 
 We output the log-file with all information on the search process. You can easily see top-performing architectures using the following command: `python src/helpers/num_uq.py path_to_genotypes.out`
+
+### WACV 2020 (CityScapes)
+
+#### Prepare data
+
+You would need to have the CityScapes segmentation dataset.
+
+After that, run in your terminal:
+
+```bash
+mkdir data/datasets
+ln -s /path_to_cityscapes/cs/ data/datasets/
+```
+
+#### Running search
+
+After that, you can execute `./examples/search/search_wacv.sh` that will start the search process.
+
+***[!] Please note that all the hyperparameters were tuned for running the search process on 2 1080Ti GPUs. In case when your setup differs, you would need to tune the hyperparameters accordingly.***
 
 ## License
 

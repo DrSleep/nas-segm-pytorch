@@ -2,69 +2,77 @@
 
 import numpy as np
 
-# DATASET PARAMETERS
-TRAIN_DIR = "./data/datasets/VOCdevkit/"
-VAL_DIR = "./data/datasets/VOCdevkit/"
-TRAIN_LIST = "./data/lists/train+.lst"
-VAL_LIST = "./data/lists/train+.lst"  # meta learning
+# DATASET CONFIGURATION
+BATCH_SIZE = [64, 32]
 META_TRAIN_PRCT = 90
-N_TASK0 = 4000
-SHORTER_SIDE = [300, 400]
-CROP_SIZE = [256, 350]
 NORMALISE_PARAMS = [
     1.0 / 255,  # SCALE
     np.array([0.485, 0.456, 0.406]).reshape((1, 1, 3)),  # MEAN
-    np.array([0.229, 0.224, 0.225]).reshape((1, 1, 3)),
-]  # STD
-BATCH_SIZE = [64, 32]
-NUM_WORKERS = 16
+    np.array([0.229, 0.224, 0.225]).reshape((1, 1, 3)),  # STD
+]
 NUM_CLASSES = [21, 21]
-LOW_SCALE = 0.7
-HIGH_SCALE = 1.4
-VAL_SHORTER_SIDE = 400
-VAL_CROP_SIZE = 400
+NUM_WORKERS = 16
+N_TASK0 = 4000  # store in-memory these many samples for the first task
+TRAIN_DIR = "./data/datasets/VOCdevkit/"
+TRAIN_LIST = "./data/lists/train+.lst"
 VAL_BATCH_SIZE = 64
+VAL_CROP_SIZE = 400
+VAL_DIR = "./data/datasets/VOCdevkit/"
+VAL_LIST = "./data/lists/train+.lst"  # meta-train and meta-val learning
+VAL_RESIZE_SIDE = 400
 
-# ENCODER PARAMETERS
+# AUGMENTATIONS CONFIGURATION
+CROP_SIZE = [256, 350]
+HIGH_SCALE = 1.4
+LOW_SCALE = 0.7
+RESIZE_SIDE = [300, 400]
+
+# ENCODER OPTIMISATION CONFIGURATION
 ENC_GRAD_CLIP = 3.0
+ENC_LR = [1e-3, 1e-3]
+ENC_MOM = [0.9] * 3
+ENC_OPTIM = "sgd"
+ENC_WD = [1e-5] * 3
 
-# DECODER PARAMETERS
-DEC_GRAD_CLIP = 3.0
+# DECODER OPTIMISATION CONFIGURATION
 DEC_AUX_WEIGHT = 0.15  # to disable aux, set to -1
+DEC_GRAD_CLIP = 3.0
+DEC_LR = [3e-3, 3e-3]
+DEC_MOM = [0.9] * 3
+DEC_OPTIM = "adam"
+DEC_WD = [0] * 3
 
-# GENERAL
+# GENERAL OPTIMISATION CONFIGURATION
+DO_KD = True
+DO_POLYAK = True
 FREEZE_BN = [False, False]
+KD_COEFF = 0.3
 NUM_EPOCHS = 20000
 NUM_SEGM_EPOCHS = [5, 1]
-PRINT_EVERY = 20
 RANDOM_SEED = 9314
-SNAPSHOT_DIR = "./ckpt/"
-CKPT_PATH = "./ckpt/checkpoint.pth.tar"
 VAL_EVERY = [5, 1]  # how often to record validation scores
+
+# GENERAL DEBUGGING CONFIGURATION
+CKPT_PATH = "./ckpt/checkpoint.pth.tar"
+PRINT_EVERY = 20
+SNAPSHOT_DIR = "./ckpt/"
 SUMMARY_DIR = "./tb_logs/"
 
-# OPTIMISERS' PARAMETERS
-LR_ENC = [1e-3, 1e-3]
-LR_DEC = [3e-3, 3e-3]
-LR_CTRL = 1e-4
-MOM_ENC = [0.9] * 3
-MOM_DEC = [0.9] * 3
-MOM_CTRL = 0.9
-WD_ENC = [1e-5] * 3
-WD_DEC = [0] * 3
-WD_CTRL = 1e-4
-OPTIM_DEC = "adam"
-OPTIM_ENC = "sgd"
-AGENT_CTRL = "ppo"
-DO_KD = True
-KD_COEFF = 0.3
-DO_POLYAK = True
+# CONTROLLER CONFIGURATION: USED TO CREATE RNN-BASED CONTROLLER
+CELL_MAX_REPEAT = 4
+CELL_MAX_STRIDE = 2
+CELL_NUM_LAYERS = 4
+CTRL_AGENT = "ppo"
+CTRL_BASELINE_DECAY = 0.95
+CTRL_LR = 1e-4
+CTRL_VERSION = 'cvpr'
+DEC_NUM_CELLS = 3
+LSTM_HIDDEN_SIZE = 100
+LSTM_NUM_LAYERS = 2
+NUM_AGG_OPS = 2
+NUM_OPS = 11
 
-# CONTROLLER
-BL_DEC = 0.95
-OP_SIZE = 11
+# DECODER CONFIGURATION: USED TO CREATE DECODER ARCHITECTURE
 AGG_CELL_SIZE = 48
-NUM_CELLS = 3
-NUM_BRANCHES = 4
 AUX_CELL = True
 SEP_REPEATS = 1

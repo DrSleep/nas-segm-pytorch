@@ -1,18 +1,11 @@
 """NAS Decoders"""
 
-
-import logging
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from rl.genotypes import AGG_OP_NAMES, OP_NAMES, OP_NAMES_WACV
 from .layer_factory import AGG_OPS, OPS, conv_bn_relu, conv3x3
-
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def collect_all(feats, collect_indices):
@@ -169,6 +162,7 @@ class MicroDecoder(nn.Module):
         ctx_cell=ContextualCell,
         aux_cell=False,
         repeats=1,
+        **kwargs
     ):
         super(MicroDecoder, self).__init__()
         cells = []
@@ -274,6 +268,7 @@ class TemplateDecoder(nn.Module):
         num_pools=4,
         repeats=1,
         stride_power=1,
+        **kwargs
     ):
         """
         Args:
