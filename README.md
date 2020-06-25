@@ -1,5 +1,13 @@
 # Neural Architecture Search of Semantic Segmentation Models (in PyTorch)
 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/fast-neural-architecture-search-of-compact/monocular-depth-estimation-on-nyu-depth-v2)](https://paperswithcode.com/sota/monocular-depth-estimation-on-nyu-depth-v2?p=fast-neural-architecture-search-of-compact)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/fast-neural-architecture-search-of-compact/semantic-segmentation-on-pascal-voc-2012-val)](https://paperswithcode.com/sota/semantic-segmentation-on-pascal-voc-2012-val?p=fast-neural-architecture-search-of-compact)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/template-based-automatic-search-of-compact/semantic-segmentation-on-camvid)](https://paperswithcode.com/sota/semantic-segmentation-on-camvid?p=template-based-automatic-search-of-compact)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/template-based-automatic-search-of-compact/real-time-semantic-segmentation-on-cityscapes)](https://paperswithcode.com/sota/real-time-semantic-segmentation-on-cityscapes?p=template-based-automatic-search-of-compact)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/template-based-automatic-search-of-compact/semantic-segmentation-on-cityscapes-val)](https://paperswithcode.com/sota/semantic-segmentation-on-cityscapes-val?p=template-based-automatic-search-of-compact)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/template-based-automatic-search-of-compact/semantic-segmentation-on-cityscapes)](https://paperswithcode.com/sota/semantic-segmentation-on-cityscapes?p=template-based-automatic-search-of-compact)
+
+
 This repository provides official models from two papers:
 1. `Fast Neural Architecture Search of Compact Semantic Segmentation Models via Auxiliary Cells`, available [here](https://arxiv.org/abs/1810.10804);
 2. `Template-Based Automatic Search of Compact Semantic Segmentation Architectures`, available [here](https://arxiv.org/abs/1904.02365).
